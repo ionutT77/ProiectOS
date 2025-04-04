@@ -211,12 +211,14 @@ void remove_treasure(const char *hunt_id, int id) {
     char temp_path[256];
     snprintf(temp_path, sizeof(temp_path), "%.*s.tmp", (int)(sizeof(temp_path) - 5), path);
 
+    // Open the original file for reading
     FILE *file = fopen(path, "rb");
     if (!file) {
         perror("Error opening treasures file");
         return;
     }
 
+    // Open the temporary file for writing
     FILE *temp_file = fopen(temp_path, "wb");
     if (!temp_file) {
         perror("Error creating temporary file");
@@ -227,28 +229,48 @@ void remove_treasure(const char *hunt_id, int id) {
     Treasure t;
     int treasure_found = 0;
 
+    // Read treasures from the original file and write to the temporary file
     while (fread(&t, sizeof(Treasure), 1, file) == 1) {
         if (t.id == id) {
-            treasure_found = 1;
+            treasure_found = 1; // Mark that the treasure was found
             continue; // Skip writing this treasure to the temp file
         }
-        fwrite(&t, sizeof(Treasure), 1, temp_file);
+        if (fwrite(&t, sizeof(Treasure), 1, temp_file) != 1) {
+            perror("Error writing to temporary file");
+            fclose(file);
+            fclose(temp_file);
+            remove(temp_path); // Clean up the temporary file
+            return;
+        }
     }
 
     fclose(file);
     fclose(temp_file);
 
+    // If the treasure was not found, remove the temporary file and return
     if (!treasure_found) {
         printf("Treasure with ID %d not found in hunt '%s'.\n", id, hunt_id);
         remove(temp_path); // Remove the temporary file
         return;
     }
 
-    if (rename(temp_path, path) != 0) {
-        perror("Error renaming temporary file");
+    // Remove the original file before renaming the temporary file
+    if (remove(path) != 0) {
+        perror("Error removing original file");
+        printf("Debug: Failed to remove original file '%s'.\n", path);
+        remove(temp_path); // Clean up the temporary file
         return;
     }
 
+    // Rename the temporary file to replace the original file
+    if (rename(temp_path, path) != 0) {
+        perror("Error renaming temporary file");
+        printf("Debug: Failed to rename temporary file '%s' to '%s'.\n", temp_path, path);
+        remove(temp_path); // Clean up the temporary file
+        return;
+    }
+
+    // Log the action and notify the user
     log_action(hunt_id, "Removed treasure");
     printf("Treasure with ID %d removed from hunt '%s'.\n", id, hunt_id);
 }
