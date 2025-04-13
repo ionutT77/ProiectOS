@@ -308,71 +308,22 @@ void remove_hunt(const char *hunt_id) {
         return;
     }
 
-    // Construct the path to the hunt-specific log file
-    char log_file_path[512]; // Increased buffer size to avoid truncation
-    if (snprintf(log_file_path, sizeof(log_file_path), "%s/treasure_%s_log.txt", hunt_path, hunt_id) >= sizeof(log_file_path)) {
-        fprintf(stderr, "Error: Log file path is too long.\n");
+    // Construct the path to the treasures file
+    char treasures_file_path[256];
+    if (snprintf(treasures_file_path, sizeof(treasures_file_path), "%s/treasures%s.dat", hunt_path, hunt_id + 4) >= sizeof(treasures_file_path)) {
+        fprintf(stderr, "Error: Treasures file path is too long.\n");
         return;
     }
 
-    // Ensure the logs directory exists
-    const char *logs_dir = "logs";
-    if (mkdir(logs_dir, 0755) == -1 && errno != EEXIST) {
-        perror("Error creating logs directory");
+    // Clear the contents of the treasures file
+    FILE *file = fopen(treasures_file_path, "wb");
+    if (!file) {
+        perror("Error opening treasures file for clearing");
         return;
     }
+    fclose(file);
 
-    // Construct the destination path for the log file
-    char preserved_log_path[512]; // Increased buffer size to avoid truncation
-    if (snprintf(preserved_log_path, sizeof(preserved_log_path), "%s/treasure_%s_log.txt", logs_dir, hunt_id) >= sizeof(preserved_log_path)) {
-        fprintf(stderr, "Error: Preserved log file path is too long.\n");
-        return;
-    }
-
-    // Move the log file to the logs directory
-    if (access(log_file_path, F_OK) == 0) {
-        if (rename(log_file_path, preserved_log_path) != 0) {
-            perror("Error moving log file to logs directory");
-        } else {
-            printf("Log file preserved: %s -> %s\n", log_file_path, preserved_log_path);
-        }
-    } else {
-        printf("Warning: Log file does not exist: %s\n", log_file_path);
-    }
-
-    DIR *dir = opendir(hunt_path);
-    if (!dir) {
-        perror("Error opening hunt directory");
-        return;
-    }
-
-    struct dirent *entry;
-    char file_path[256];
-
-    // Remove all files in the directory (except the log file, which was moved)
-    while ((entry = readdir(dir)) != NULL) {
-        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
-            continue;
-        }
-
-        if (snprintf(file_path, sizeof(file_path), "%s/%s", hunt_path, entry->d_name) >= sizeof(file_path)) {
-            fprintf(stderr, "Error: File path is too long.\n");
-            continue;
-        }
-
-        if (remove(file_path) != 0) {
-            perror("Error removing file");
-        }
-    }
-
-    closedir(dir);
-
-    // Remove the hunt directory itself
-    if (rmdir(hunt_path) != 0) {
-        perror("Error removing hunt directory");
-        return;
-    }
-
-    log_action(hunt_id, "Removed hunt");
-    printf("Hunt '%s' removed successfully.\n", hunt_id);
+    // Log the action
+    log_action(hunt_id, "Cleared all treasures from hunt");
+    printf("All treasures in hunt '%s' have been cleared.\n", hunt_id);
 }

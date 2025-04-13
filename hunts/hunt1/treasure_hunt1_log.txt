@@ -1,1 +1,6 @@
 [2025-04-13 17:21:51] Hunt: hunt1 - Added treasure
+[2025-04-13 17:32:53] Hunt: hunt1 - Added treasure
+[2025-04-13 17:33:02] Hunt: hunt1 - Cleared all treasures from hunt
+[2025-04-13 17:37:19] Hunt: hunt1 - Added treasure
+[2025-04-13 17:39:14] Hunt: hunt1 - Added treasure
+[2025-04-13 17:39:22] Hunt: hunt1 - Removed treasure and reorganized IDs

@@ -1,0 +1,2 @@
+[2025-04-13 17:38:17] Hunt: hunt3 - Added treasure
+[2025-04-13 17:38:44] Hunt: hunt3 - Removed treasure and reorganized IDs

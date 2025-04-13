@@ -1,3 +1,4 @@
 [2025-04-11 10:05:36] Hunt: hunt2 - Added treasure
 [2025-04-11 10:06:51] Hunt: hunt2 - Added treasure
 [2025-04-11 10:08:25] Hunt: hunt2 - Removed treasure
+[2025-04-13 17:33:34] Hunt: hunt2 - Cleared all treasures from hunt
