@@ -254,6 +254,7 @@ void remove_treasure(const char *hunt_id, int id) {
 
     Treasure t;
     int treasure_found = 0;
+    int current_id = 1; // Start reorganizing IDs from 1
 
     // Read treasures from the original file and write to the temporary file
     while (fread(&t, sizeof(Treasure), 1, file) == 1) {
@@ -261,6 +262,7 @@ void remove_treasure(const char *hunt_id, int id) {
             treasure_found = 1; // Mark that the treasure was found
             continue; // Skip writing this treasure to the temp file
         }
+        t.id = current_id++; // Reorganize the ID
         if (fwrite(&t, sizeof(Treasure), 1, temp_file) != 1) {
             perror("Error writing to temporary file");
             fclose(file);
@@ -295,8 +297,8 @@ void remove_treasure(const char *hunt_id, int id) {
     }
 
     // Log the action and notify the user
-    log_action(hunt_id, "Removed treasure");
-    printf("Treasure with ID %d removed from hunt '%s'.\n", id, hunt_id);
+    log_action(hunt_id, "Removed treasure and reorganized IDs");
+    printf("Treasure with ID %d removed from hunt '%s'. IDs reorganized.\n", id, hunt_id);
 }
 
 void remove_hunt(const char *hunt_id) {
