@@ -10,7 +10,7 @@
 #include <errno.h>
 
 #define BASE_DIR "hunts"
-#define LOG_FILE "logged_hunt.txt"
+#define LOG_FILE "treasure_hunt_log_final.txt"
 #define MAX_USERNAME 50
 #define MAX_CLUE 256
 
@@ -34,24 +34,49 @@ void log_action(const char *hunt_id, const char *action);
 
 // Log function implementation
 void log_action(const char *hunt_id, const char *action) {
-    FILE *log_file = fopen(LOG_FILE, "a");
-    if (!log_file) {
-        perror("Error opening log file");
+    // Log to the global log file
+    FILE *global_log_file = fopen(LOG_FILE, "a");
+    if (!global_log_file) {
+        perror("Error opening global log file");
         return;
     }
 
+    // Create a hunt-specific log file path
+    char hunt_log_path[256];
+    snprintf(hunt_log_path, sizeof(hunt_log_path), "%s/%s/treasure_%s_log.txt", BASE_DIR, hunt_id, hunt_id);
+
+    FILE *hunt_log_file = fopen(hunt_log_path, "a");
+    if (!hunt_log_file) {
+        perror("Error opening hunt-specific log file");
+        fclose(global_log_file);
+        return;
+    }
+
+    // Get the current time
     time_t now = time(NULL);
     struct tm *t = localtime(&now);
     if (!t) {
         perror("Error getting local time");
-        fclose(log_file);
+        fclose(global_log_file);
+        fclose(hunt_log_file);
         return;
     }
 
-    fprintf(log_file, "[%04d-%02d-%02d %02d:%02d:%02d] Hunt: %s - %s\n",
-            t->tm_year + 1900, t->tm_mon + 1, t->tm_mday,
-            t->tm_hour, t->tm_min, t->tm_sec, hunt_id, action);
-    fclose(log_file);
+    // Format the log entry
+    char log_entry[512];
+    snprintf(log_entry, sizeof(log_entry), "[%04d-%02d-%02d %02d:%02d:%02d] Hunt: %s - %s\n",
+             t->tm_year + 1900, t->tm_mon + 1, t->tm_mday,
+             t->tm_hour, t->tm_min, t->tm_sec, hunt_id, action);
+
+    // Write to the hunt-specific log file
+    fputs(log_entry, hunt_log_file);
+
+    // Write to the global log file
+    fputs(log_entry, global_log_file);
+
+    // Close the files
+    fclose(hunt_log_file);
+    fclose(global_log_file);
 }
 
 int main(int argc, char *argv[]) {
@@ -83,11 +108,11 @@ int main(int argc, char *argv[]) {
 
 void add_treasure(const char *hunt_id) {
     char path[256];
-    snprintf(path, sizeof(path), "%s/%s/treasures.dat", BASE_DIR, hunt_id);
+    snprintf(path, sizeof(path), "%s/%s/treasures%s.dat", BASE_DIR, hunt_id, hunt_id + 4); // Extract the number from hunt_id
 
     // Ensure BASE_DIR exists
     umask(0);
-    if (mkdir(BASE_DIR) == -1 && errno != EEXIST) {
+    if (mkdir(BASE_DIR, 0755) == -1 && errno != EEXIST) {
         perror("Error creating base directory");
         return;
     }
@@ -95,14 +120,15 @@ void add_treasure(const char *hunt_id) {
     // Ensure hunt_id directory exists
     char hunt_path[256];
     snprintf(hunt_path, sizeof(hunt_path), "%s/%s", BASE_DIR, hunt_id);
-    if (mkdir(hunt_path) == -1 && errno != EEXIST) {
+    if (mkdir(hunt_path, 0755) == -1 && errno != EEXIST) {
         perror("Error creating hunt directory");
         return;
     }
 
+    // Open the treasuresX.dat file for appending
     int fd = open(path, O_WRONLY | O_CREAT | O_APPEND, 0644);
     if (fd == -1) {
-        perror("Error opening file");
+        perror("Error opening treasuresX.dat file");
         return;
     }
 
@@ -146,7 +172,7 @@ void add_treasure(const char *hunt_id) {
         return;
     }
     if (write(fd, &t, sizeof(Treasure)) != sizeof(Treasure)) {
-        perror("Error writing to file");
+        perror("Error writing to treasuresX.dat file");
     }
     close(fd);
     log_action(hunt_id, "Added treasure");
@@ -154,11 +180,11 @@ void add_treasure(const char *hunt_id) {
 
 void list_treasures(const char *hunt_id) {
     char path[256];
-    snprintf(path, sizeof(path), "%s/%s/treasures.dat", BASE_DIR, hunt_id);
+    snprintf(path, sizeof(path), "%s/%s/treasures%s.dat", BASE_DIR, hunt_id, hunt_id + 4); // Extract the number from hunt_id
 
     FILE *file = fopen(path, "rb");
     if (!file) {
-        perror("Error opening treasures file");
+        perror("Error opening treasuresX.dat file");
         return;
     }
 
@@ -181,11 +207,11 @@ void list_treasures(const char *hunt_id) {
 
 void view_treasure(const char *hunt_id, int id) {
     char path[256];
-    snprintf(path, sizeof(path), "%s/%s/treasures.dat", BASE_DIR, hunt_id);
+    snprintf(path, sizeof(path), "%s/%s/treasures%s.dat", BASE_DIR, hunt_id, hunt_id + 4); // Extract the number from hunt_id
 
     FILE *file = fopen(path, "rb");
     if (!file) {
-        perror("Error opening treasures file");
+        perror("Error opening treasuresX.dat file");
         return;
     }
 
@@ -206,7 +232,7 @@ void view_treasure(const char *hunt_id, int id) {
 
 void remove_treasure(const char *hunt_id, int id) {
     char path[256];
-    snprintf(path, sizeof(path), "%s/%s/treasures.dat", BASE_DIR, hunt_id);
+    snprintf(path, sizeof(path), "%s/%s/treasures%s.dat", BASE_DIR, hunt_id, hunt_id + 4); // Extract the number from hunt_id
 
     char temp_path[256];
     snprintf(temp_path, sizeof(temp_path), "%.*s.tmp", (int)(sizeof(temp_path) - 5), path);
@@ -214,7 +240,7 @@ void remove_treasure(const char *hunt_id, int id) {
     // Open the original file for reading
     FILE *file = fopen(path, "rb");
     if (!file) {
-        perror("Error opening treasures file");
+        perror("Error opening treasuresX.dat file");
         return;
     }
 
@@ -256,8 +282,7 @@ void remove_treasure(const char *hunt_id, int id) {
 
     // Remove the original file before renaming the temporary file
     if (remove(path) != 0) {
-        perror("Error removing original file");
-        printf("Debug: Failed to remove original file '%s'.\n", path);
+        perror("Error removing original treasuresX.dat file");
         remove(temp_path); // Clean up the temporary file
         return;
     }
@@ -265,7 +290,6 @@ void remove_treasure(const char *hunt_id, int id) {
     // Rename the temporary file to replace the original file
     if (rename(temp_path, path) != 0) {
         perror("Error renaming temporary file");
-        printf("Debug: Failed to rename temporary file '%s' to '%s'.\n", temp_path, path);
         remove(temp_path); // Clean up the temporary file
         return;
     }

@@ -1,0 +1,6 @@
+[2025-04-04 18:50:13] Hunt: hunt1 - Removed treasure
+[2025-04-04 18:50:37] Hunt: hunt2 - Removed treasure
+[2025-04-11 10:04:46] Hunt: hunt1 - Added treasure
+[2025-04-11 10:05:36] Hunt: hunt2 - Added treasure
+[2025-04-11 10:06:51] Hunt: hunt2 - Added treasure
+[2025-04-11 10:08:25] Hunt: hunt2 - Removed treasure
