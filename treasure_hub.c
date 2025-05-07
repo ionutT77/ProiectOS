@@ -5,8 +5,20 @@
 #include <signal.h>
 #include <unistd.h>
 #include <sys/wait.h>
+#include <dirent.h>
+#include <sys/types.h>
 
 #define CMD_FILE "/tmp/monitor_command.txt"
+
+// Define the Treasure struct
+typedef struct {
+    int id;
+    char username[50];
+    double latitude;
+    double longitude;
+    char clue[256];
+    int value;
+} Treasure;
 
 pid_t monitor_pid = -1; // PID of the monitor process
 int monitor_running = 0; // Flag to track if the monitor is running
@@ -82,6 +94,46 @@ void handle_exit() {
     }
 }
 
+void list_hunts() {
+    DIR *dir = opendir("hunts");
+    if (!dir) {
+        perror("Error opening hunts directory");
+        return;
+    }
+
+    struct dirent *entry;
+    while ((entry = readdir(dir)) != NULL) {
+        // Skip "." and ".."
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+            continue;
+        }
+
+        // Construct the path to the treasures file
+        char treasures_file[512]; // Increase buffer size to avoid truncation
+        if (snprintf(treasures_file, sizeof(treasures_file), "hunts/%s/treasures%s.dat", entry->d_name, entry->d_name + 4) >= sizeof(treasures_file)) {
+            fprintf(stderr, "Error: Path to treasures file is too long.\n");
+            continue;
+        }
+
+        // Open the treasures file and count the treasures
+        FILE *file = fopen(treasures_file, "rb");
+        if (!file) {
+            perror("Error opening treasures file");
+            continue;
+        }
+
+        int treasure_count = 0;
+        fseek(file, 0, SEEK_END);
+        treasure_count = ftell(file) / sizeof(Treasure);
+        fclose(file);
+
+        // Print the hunt name and treasure count
+        printf("Hunt: %s, Total Treasures: %d\n", entry->d_name, treasure_count);
+    }
+
+    closedir(dir);
+}
+
 int main() {
     char input[256];
 
@@ -100,6 +152,8 @@ int main() {
             send_command(input);
         } else if (strncmp(input, "view_treasure", 13) == 0) {
             send_command(input);
+        } else if (strcmp(input, "list_hunts") == 0) { // New command
+            list_hunts();
         } else if (strcmp(input, "stop_monitor") == 0) {
             stop_monitor();
         } else if (strcmp(input, "exit") == 0) {
