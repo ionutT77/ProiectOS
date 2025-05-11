@@ -54,6 +54,31 @@ void start_monitor() {
     }
 }
 
+void start_monitor_with_pipe(int pipe_fd[2]) {
+    if (monitor_running) {
+        printf("Monitor is already running.\n");
+        return;
+    }
+
+    monitor_pid = fork();
+    if (monitor_pid == 0) {
+        // In child process
+        close(pipe_fd[0]); // Close read end
+        char write_fd_str[10];
+        snprintf(write_fd_str, sizeof(write_fd_str), "%d", pipe_fd[1]); // Convert write_fd to string
+        execl("./monitor", "./monitor", write_fd_str, NULL);
+        perror("execl failed");
+        exit(1);
+    } else if (monitor_pid > 0) {
+        // In parent process
+        close(pipe_fd[1]); // Close write end in parent
+        monitor_running = 1;
+        printf("Monitor started with PID %d.\n", monitor_pid);
+    } else {
+        perror("fork failed");
+    }
+}
+
 void stop_monitor() {
     if (!monitor_running) {
         printf("Monitor is not running.\n");
@@ -134,8 +159,58 @@ void list_hunts() {
     closedir(dir);
 }
 
+void calculate_score() {
+    DIR *dir = opendir("hunts");
+    if (!dir) {
+        perror("Error opening hunts directory");
+        return;
+    }
+
+    struct dirent *entry;
+    while ((entry = readdir(dir)) != NULL) {
+        // Skip "." and ".."
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+            continue;
+        }
+
+        // Ensure the constructed path fits within the buffer
+        char hunt_path[512]; // Increase buffer size to avoid truncation
+        if (snprintf(hunt_path, sizeof(hunt_path), "hunts/%s", entry->d_name) >= sizeof(hunt_path)) {
+            fprintf(stderr, "Error: Hunt path is too long.\n");
+            continue;
+        }
+
+        pid_t pid = fork();
+        if (pid == 0) {
+            // In child process
+            execl("./calculate_scores", "./calculate_scores", hunt_path, NULL);
+            perror("execl failed");
+            exit(1);
+        } else if (pid > 0) {
+            // In parent process, wait for the child
+            int status;
+            waitpid(pid, &status, 0);
+            if (WIFEXITED(status)) {
+                printf("Scores for hunt %s calculated successfully.\n", entry->d_name);
+            } else {
+                printf("Error calculating scores for hunt %s.\n", entry->d_name);
+            }
+        } else {
+            perror("fork failed");
+        }
+    }
+
+    closedir(dir);
+}
+
 int main() {
     char input[256];
+    int pipe_fd[2];
+    if (pipe(pipe_fd) == -1) {
+        perror("pipe failed");
+        return EXIT_FAILURE;
+    }
+    printf("Pipe created: read_fd=%d, write_fd=%d\n", pipe_fd[0], pipe_fd[1]);
 
     printf("Welcome to treasure_hub. Type a command:\n");
     while (1) {
@@ -147,13 +222,15 @@ int main() {
         input[strcspn(input, "\n")] = 0; // Remove newline character
 
         if (strcmp(input, "start_monitor") == 0) {
-            start_monitor();
+            start_monitor_with_pipe(pipe_fd);
         } else if (strncmp(input, "list_treasures", 14) == 0) {
             send_command(input);
         } else if (strncmp(input, "view_treasure", 13) == 0) {
             send_command(input);
-        } else if (strcmp(input, "list_hunts") == 0) { // New command
+        } else if (strcmp(input, "list_hunts") == 0) {
             list_hunts();
+        } else if (strcmp(input, "calculate_score") == 0) {
+            calculate_score();
         } else if (strcmp(input, "stop_monitor") == 0) {
             stop_monitor();
         } else if (strcmp(input, "exit") == 0) {
