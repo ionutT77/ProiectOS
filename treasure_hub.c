@@ -7,8 +7,11 @@
 #include <sys/wait.h>
 #include <dirent.h>
 #include <sys/types.h>
+#include <sys/stat.h>
+#include <errno.h>
 
 #define CMD_FILE "/tmp/monitor_command.txt"
+#define FIFO_PATH "/tmp/monitor_output_fifo"
 
 // Define the Treasure struct
 typedef struct {
@@ -79,6 +82,26 @@ void start_monitor_with_pipe(int pipe_fd[2]) {
     }
 }
 
+void start_monitor_with_fifo() {
+    if (monitor_running) {
+        printf("Monitor is already running.\n");
+        return;
+    }
+
+    monitor_pid = fork();
+    if (monitor_pid == 0) {
+        // In child process
+        execl("./monitor", "./monitor", FIFO_PATH, NULL);
+        perror("execl failed");
+        exit(1);
+    } else if (monitor_pid > 0) {
+        monitor_running = 1;
+        printf("Monitor started with PID %d.\n", monitor_pid);
+    } else {
+        perror("fork failed");
+    }
+}
+
 void stop_monitor() {
     if (!monitor_running) {
         printf("Monitor is not running.\n");
@@ -110,6 +133,18 @@ void send_command(const char *cmd) {
     kill(monitor_pid, SIGUSR1); // Notify the monitor
 }
 
+void read_monitor_output(int read_fd) {
+    char buffer[1024];
+    ssize_t n;
+    // Read whatever is available (you may want to improve this for your use case)
+    while ((n = read(read_fd, buffer, sizeof(buffer)-1)) > 0) {
+        buffer[n] = '\0';
+        printf("%s", buffer);
+        // Optionally break if you expect only one message per command
+        break;
+    }
+}
+
 void handle_exit() {
     if (monitor_running) {
         printf("Error: Monitor is still running. Stop it first using stop_monitor.\n");
@@ -119,7 +154,7 @@ void handle_exit() {
     }
 }
 
-void list_hunts() {
+/* void list_hunts() {
     DIR *dir = opendir("hunts");
     if (!dir) {
         perror("Error opening hunts directory");
@@ -202,16 +237,17 @@ void calculate_score() {
 
     closedir(dir);
 }
-
+ */
 int main() {
     char input[256];
-    int pipe_fd[2];
-    if (pipe(pipe_fd) == -1) {
-        perror("pipe failed");
+
+    // Create the FIFO if it doesn't exist
+    if (mkfifo(FIFO_PATH, 0666) == -1 && errno != EEXIST) {
+        perror("mkfifo failed");
         return EXIT_FAILURE;
     }
-    printf("Pipe created: read_fd=%d, write_fd=%d\n", pipe_fd[0], pipe_fd[1]);
 
+    printf("FIFO created at %s\n", FIFO_PATH);
     printf("Welcome to treasure_hub. Type a command:\n");
     while (1) {
         printf("> ");
@@ -222,15 +258,15 @@ int main() {
         input[strcspn(input, "\n")] = 0; // Remove newline character
 
         if (strcmp(input, "start_monitor") == 0) {
-            start_monitor_with_pipe(pipe_fd);
-        } else if (strncmp(input, "list_treasures", 14) == 0) {
+            start_monitor_with_fifo();
+        } else if (
+            strncmp(input, "list_treasures", 14) == 0 ||
+            strncmp(input, "view_treasure", 13) == 0 ||
+            strcmp(input, "list_hunts") == 0 ||
+            strcmp(input, "calculate_score") == 0
+        ) {
             send_command(input);
-        } else if (strncmp(input, "view_treasure", 13) == 0) {
-            send_command(input);
-        } else if (strcmp(input, "list_hunts") == 0) {
-            list_hunts();
-        } else if (strcmp(input, "calculate_score") == 0) {
-            calculate_score();
+            // No need to read from FIFO here; cat will do it in the other terminal
         } else if (strcmp(input, "stop_monitor") == 0) {
             stop_monitor();
         } else if (strcmp(input, "exit") == 0) {
