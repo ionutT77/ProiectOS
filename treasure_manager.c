@@ -31,6 +31,7 @@ void view_treasure(const char *hunt_id, int id);
 void remove_treasure(const char *hunt_id, int id);
 void remove_hunt(const char *hunt_id);
 void log_action(const char *hunt_id, const char *action);
+void print_help();
 
 // Log function implementation
 void log_action(const char *hunt_id, const char *action) {
@@ -80,9 +81,9 @@ void log_action(const char *hunt_id, const char *action) {
 }
 
 int main(int argc, char *argv[]) {
-    if (argc < 3) {
-        fprintf(stderr, "Usage: %s --command hunt_id [args]\n", argv[0]);
-        return EXIT_FAILURE;
+    if (argc < 3 || strcmp(argv[1], "--help") == 0) {
+        print_help();
+        return EXIT_SUCCESS;
     }
     
     const char *command = argv[1];
@@ -326,4 +327,15 @@ void remove_hunt(const char *hunt_id) {
     // Log the action
     log_action(hunt_id, "Cleared all treasures from hunt");
     printf("All treasures in hunt '%s' have been cleared.\n", hunt_id);
+}
+
+void print_help() {
+    printf("Usage: treasure_manager --command hunt_id [args]\n");
+    printf("Commands:\n");
+    printf("  --add <hunt_id>              Add a new treasure to the hunt\n");
+    printf("  --list <hunt_id>             List all treasures in the hunt\n");
+    printf("  --view <hunt_id> <id>        View a specific treasure by ID\n");
+    printf("  --remove <hunt_id> <id>      Remove a treasure by ID\n");
+    printf("  --remove_hunt <hunt_id>      Remove an entire hunt\n");
+    printf("  --help                       Show this help message\n");
 }

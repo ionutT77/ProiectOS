@@ -61,9 +61,9 @@ void calculate_scores(const char *hunt_path) {
 
 int main(int argc, char *argv[]) {
     setvbuf(stdout, NULL, _IONBF, 0); // <-- add this line
-    if (argc != 2) {
-        fprintf(stderr, "Usage: %s <hunt_path>\n", argv[0]);
-        return EXIT_FAILURE;
+    if (argc != 2 || strcmp(argv[1], "--help") == 0) {
+        printf("Usage: calculate_scores <hunt_path>\n");
+        return EXIT_SUCCESS;
     }
 
     calculate_scores(argv[1]);

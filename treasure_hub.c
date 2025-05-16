@@ -154,90 +154,18 @@ void handle_exit() {
     }
 }
 
-/* void list_hunts() {
-    DIR *dir = opendir("hunts");
-    if (!dir) {
-        perror("Error opening hunts directory");
-        return;
-    }
-
-    struct dirent *entry;
-    while ((entry = readdir(dir)) != NULL) {
-        // Skip "." and ".."
-        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
-            continue;
-        }
-
-        // Construct the path to the treasures file
-        char treasures_file[512]; // Increase buffer size to avoid truncation
-        if (snprintf(treasures_file, sizeof(treasures_file), "hunts/%s/treasures%s.dat", entry->d_name, entry->d_name + 4) >= sizeof(treasures_file)) {
-            fprintf(stderr, "Error: Path to treasures file is too long.\n");
-            continue;
-        }
-
-        // Open the treasures file and count the treasures
-        FILE *file = fopen(treasures_file, "rb");
-        if (!file) {
-            perror("Error opening treasures file");
-            continue;
-        }
-
-        int treasure_count = 0;
-        fseek(file, 0, SEEK_END);
-        treasure_count = ftell(file) / sizeof(Treasure);
-        fclose(file);
-
-        // Print the hunt name and treasure count
-        printf("Hunt: %s, Total Treasures: %d\n", entry->d_name, treasure_count);
-    }
-
-    closedir(dir);
+void print_help() {
+    printf("Available commands:\n");
+    printf("  start_monitor            - Start the monitor process\n");
+    printf("  stop_monitor             - Stop the monitor process\n");
+    printf("  list_treasures <hunt>    - List all treasures in a hunt\n");
+    printf("  view_treasure <hunt> <id>- View details of a specific treasure\n");
+    printf("  list_hunts               - List all hunts and their treasure counts\n");
+    printf("  calculate_score          - Show scores for all users in each hunt\n");
+    printf("  help                     - Show this help message\n");
+    printf("  exit                     - Exit the program\n");
 }
 
-void calculate_score() {
-    DIR *dir = opendir("hunts");
-    if (!dir) {
-        perror("Error opening hunts directory");
-        return;
-    }
-
-    struct dirent *entry;
-    while ((entry = readdir(dir)) != NULL) {
-        // Skip "." and ".."
-        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
-            continue;
-        }
-
-        // Ensure the constructed path fits within the buffer
-        char hunt_path[512]; // Increase buffer size to avoid truncation
-        if (snprintf(hunt_path, sizeof(hunt_path), "hunts/%s", entry->d_name) >= sizeof(hunt_path)) {
-            fprintf(stderr, "Error: Hunt path is too long.\n");
-            continue;
-        }
-
-        pid_t pid = fork();
-        if (pid == 0) {
-            // In child process
-            execl("./calculate_scores", "./calculate_scores", hunt_path, NULL);
-            perror("execl failed");
-            exit(1);
-        } else if (pid > 0) {
-            // In parent process, wait for the child
-            int status;
-            waitpid(pid, &status, 0);
-            if (WIFEXITED(status)) {
-                printf("Scores for hunt %s calculated successfully.\n", entry->d_name);
-            } else {
-                printf("Error calculating scores for hunt %s.\n", entry->d_name);
-            }
-        } else {
-            perror("fork failed");
-        }
-    }
-
-    closedir(dir);
-}
- */
 int main() {
     char input[256];
 
@@ -267,6 +195,8 @@ int main() {
         ) {
             send_command(input);
             // No need to read from FIFO here; cat will do it in the other terminal
+        } else if (strcmp(input, "help") == 0) {
+            print_help();
         } else if (strcmp(input, "stop_monitor") == 0) {
             stop_monitor();
         } else if (strcmp(input, "exit") == 0) {

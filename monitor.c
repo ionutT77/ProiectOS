@@ -162,6 +162,12 @@ int main(int argc, char *argv[]) {
         return EXIT_FAILURE;
     }
 
+    if (argc == 2 && strcmp(argv[1], "--help") == 0) {
+        printf("Usage: monitor <fifo_path>\n");
+        printf("This program is intended to be run by treasure_hub.\n");
+        return 0;
+    }
+
     strncpy(global_fifo_path, argv[1], sizeof(global_fifo_path)-1);
     global_write_fd = open(global_fifo_path, O_WRONLY);
     if (global_write_fd == -1) {
